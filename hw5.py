@@ -27,15 +27,27 @@ def send(sock: socket.socket, data: bytes):
     # packets as large as the network will allow, and then send them
     # over the network, pausing half a second between sends to let the
     # network "rest" :)
-    logger = homework5.logging.get_logger("hw5-sender")
-    chunk_size = homework5.MAX_PACKET
-    pause = .1
-    offsets = range(0, len(data), homework5.MAX_PACKET)
-    for chunk in [data[i:i + chunk_size] for i in offsets]:
-        sock.send(chunk)
-        logger.info("Pausing for %f seconds", round(pause, 2))
-        time.sleep(pause)
-
+    # HEADER = struct.Struct("!I") # 4-byte sequence
+    packet_header = struct.Struct("!cQ")
+    block_size = homework5.MAX_PACKET - packet_handler.size
+    waiting = {}
+    pos = 0
+    average = None
+    rto = 0.5
+    saved_timeout = sock.gettimeout()
+    var = 0.0
+    try:
+        while pos < len(data) or waiting:
+            while len(waiting) <2 and pos <len(data):
+                block = data[pos:pos + block_size]
+                message = packet_handler.pack(b"D", pos) + block
+                sock.send(message)
+                now = time.montonic()
+                waiting[pos] = {
+                    "message":message, "sent":sent, "deadline": now + rto, "interval":rto, "repeated":False,}
+                position += len(block)
+            next_entry = min(item["deadline"] for item in waiting.values())
+            
 
 def recv(sock: socket.socket, dest: io.BufferedIOBase) -> int:
     """
